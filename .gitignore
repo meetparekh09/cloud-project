@@ -1,3 +1,7 @@
+# Key Files
+*.pem
+*.pub
+
 # Local environment
 .DS_Store
 Thumbs.db
