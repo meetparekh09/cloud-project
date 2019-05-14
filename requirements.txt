@@ -1,3 +1,4 @@
 paho-mqtt
 pyJWT
 google-cloud-vision
+lxml
