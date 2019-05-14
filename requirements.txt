@@ -1,2 +1,5 @@
 paho-mqtt
-jwt
+pyJWT
+google-cloud-vision
+lxml
+beautifulsoup4

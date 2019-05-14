@@ -1,3 +1,8 @@
+# Key Files
+*.pem
+*.pub
+iot-image-extraction-vision.json
+
 # Local environment
 .DS_Store
 Thumbs.db
