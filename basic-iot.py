@@ -4,12 +4,15 @@ import datetime
 import time
 import jwt
 import paho.mqtt.client as mqtt
+from lxml import html
+import requests
+from bs4 import BeautifulSoup
+import re
+import sys
+import json
+import multiprocessing
 
 
-# Define some project-based variables to be used below. This should be the only
-# block of variables that you need to edit in order to run this script
-# topic image-links
-# registry name: image-extracters
 
 ssl_private_key_filepath = './rsa_private.pem'
 ssl_algorithm = 'RS256' # Either RS256 or ES256
@@ -18,10 +21,7 @@ project_id = 'iot-image-extraction'
 gcp_location = 'us-central1'
 registry_id = 'image-extracters'
 device_id = 'image-extracter-1'
-topic_id = 'image-links'
-# projects/iot-image-extraction/topics/image-links
 
-# end of user-variables
 
 cur_time = datetime.datetime.utcnow()
 
@@ -41,7 +41,7 @@ _CLIENT_ID = 'projects/{}/locations/{}/registries/{}/devices/{}'.format(project_
 _MQTT_TOPIC = '/devices/{}/events'.format(device_id)
 
 client = mqtt.Client(client_id=_CLIENT_ID)
-# # authorization is handled purely with JWT, no user/pass, so username can be whatever
+
 client.username_pw_set(
     username='unused',
     password=create_jwt())
@@ -62,17 +62,78 @@ client.tls_set(ca_certs=root_cert_filepath, tls_version=2) # Replace this with 3
 client.connect('mqtt.googleapis.com', 8883)
 client.loop_start()
 
-# Could set this granularity to whatever we want based on device, monitoring needs, etc
 
-for i in range(1, 11):
+###################################################################################################################
+
+# for i in range(1, 11):
+#
+#
+#     payload = '{{"message": "hello-world-{}"}}'.format(i)
+#
+#     # client.publish(_MQTT_TOPIC, payload, qos=1)
+#
+#     print("{}\n".format(payload))
+#
+#     time.sleep(1)
+
+# reading hashtags from file
+with open('text.txt','r') as tagsfile:
+  tags = tagsfile.read()
+tagsList = tags.split('\n')
 
 
-    payload = '{{"message": "hello-world-{}"}}'.format(i)
+instagram_url="https://www.instagram.com/explore/tags/"
+dataframe = []
+numImageTag = 50
+# allDescriptionTuple = []
 
+
+for tag in tagsList:
+    page=requests.get(instagram_url + tag[1:] + '/')
+    tree=html.fromstring(page.content)
+
+
+    soup = BeautifulSoup(page.content, "lxml")
+    script_tag = soup.find('script', text=re.compile('window\._sharedData'))
+    json_data = script_tag.string.partition('=')[-1].strip(' ;')
+    try:
+        json_string = json.loads(json_data)
+    except NameError as e:
+        print('error has occured tag name:', tag)
+        print(e)
+        continue
+    except:
+        continue
+
+    nodeList = json_string["entry_data"]["TagPage"][0]["graphql"]["hashtag"]["edge_hashtag_to_media"]["edges"]
+    count = 0
+    for index, node in enumerate(nodeList):
+
+        textList = []
+        edgesList = node["node"]["edge_media_to_caption"]["edges"]
+        for edges in edgesList:
+            textList.append(edges["node"]["text"])
+
+        url = node["node"]["display_url"]
+
+        if len(textList) > 0:
+            hashtagList = [ t for t in textList[0].split() if t.startswith('#') ]
+            if len(hashtagList) > 0 :
+                dataframe.append({"hash-tag": tag, "url": url, "hash-tag-list": hashtagList})
+                count += 1
+        if count >= numImageTag:
+            break
+
+
+# print(dataframe)
+
+
+for i in range(10):
+    data = dataframe[i]
+    payload = json.dumps(data)
     client.publish(_MQTT_TOPIC, payload, qos=1)
 
-    print("{}\n".format(payload))
+###################################################################################################################
 
-    time.sleep(1)
 
 client.loop_stop()
