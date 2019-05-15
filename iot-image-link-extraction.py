@@ -102,21 +102,29 @@ def main(device_number, tagsList, numImageTag = 50, limit = 250):
             if len(textList) > 0:
                 hashtagList = [ t for t in textList[0].split() if t.startswith('#') ]
                 if len(hashtagList) > 0 :
-                    dataframe.append({"hash-tag": tag, "url": url, "hash-tag-list": hashtagList})
+                    data = {"hash-tag": tag, "url": url, "hash-tag-list": hashtagList}
+                    payload = json.dumps(data)
+                    # print(payload)
+                    time.sleep(1)
+                    client.publish(_MQTT_TOPIC, payload, qos=1)
+
+                    # dataframe.append({"hash-tag": tag, "url": url, "hash-tag-list": hashtagList})
                     count += 1
-            if count >= numImageTag:
+            if count >= limit or count >= numImageTag:
                 break
 
 
     # print(dataframe)
 
-    send_count = 0
-    for data in dataframe:
-        payload = json.dumps(data)
-        client.publish(_MQTT_TOPIC, payload, qos=1)
-        send_count += 1
-        if send_count >= limit:
-            break
+    # send_count = 0
+    # for data in dataframe:
+    #     payload = json.dumps(data)
+    #     # print(payload)
+    #     time.sleep(2)
+    #     client.publish(_MQTT_TOPIC, payload, qos=1)
+    #     send_count += 1
+    #     if send_count >= limit:
+    #         break
 
     ###################################################################################################################
 
@@ -132,8 +140,8 @@ tagsList = tags.split('\n')
 
 if __name__ == '__main__':
     process_list = []
-    for i in range(10):
-        p = Process(target=main, args=(i+1, tagsList[0+i*5:i*5+5], 5, 1))
+    for i in range(1):
+        p = Process(target=main, args=(i+1, tagsList[0+i*50:i*50+50], 50, 250))
         process_list.append(p)
         p.start()
 
