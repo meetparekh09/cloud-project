@@ -113,19 +113,6 @@ def main(device_number, tagsList, numImageTag = 50, limit = 250):
             if count >= limit or count >= numImageTag:
                 break
 
-
-    # print(dataframe)
-
-    # send_count = 0
-    # for data in dataframe:
-    #     payload = json.dumps(data)
-    #     # print(payload)
-    #     time.sleep(2)
-    #     client.publish(_MQTT_TOPIC, payload, qos=1)
-    #     send_count += 1
-    #     if send_count >= limit:
-    #         break
-
     ###################################################################################################################
 
 
@@ -141,7 +128,7 @@ tagsList = tags.split('\n')
 if __name__ == '__main__':
     process_list = []
     for i in range(1):
-        p = Process(target=main, args=(i+1, tagsList[0+i*50:i*50+50], 50, 250))
+        p = Process(target=main, args=(i+1, tagsList[0+i*50:i*50+50], 200, 250))
         process_list.append(p)
         p.start()
 
