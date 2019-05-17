@@ -17,7 +17,7 @@ def get_link(tag):
     initial = "https://www.pexels.com/search/"
     middle = "?page="
     page = 1
-    prefix = initial + tag + middle
+    prefix = initial + tag[1:] + middle
     page_link = prefix + str(page)
     cnt = 0
     link_list = set()
@@ -104,12 +104,15 @@ def main(device_number, tagsList, numImageTag = 50, limit = 250):
 
     for tag in tagsList:
         link_list = get_link(tag)
+        count = 0
         print(len(link_list))
         for url in link_list:
             data = {"hash-tag": tag, "url": url}
+            count += 1
             payload = json.dumps(data)
-            time.sleep(0.5)
             client.publish(_MQTT_TOPIC, payload, qos=1)
+            if count % 10 == 0:
+                time.sleep(5)
         # time.sleep(2)
         # page=requests.get(instagram_url + tag[1:] + '/')
         # tree=html.fromstring(page.content)
@@ -165,12 +168,12 @@ tagsList = tags.split('\n')
 
 
 if __name__ == '__main__':
-    # process_list = []
-    main(1, tagsList)
-    # for i in range(1):
-    #     p = Process(target=main, args=(i+1, tagsList[0+i*50:i*50+50], 200, 250))
-    #     process_list.append(p)
-    #     p.start()
-    #
-    # for p in process_list:
-    #     p.join()
+    process_list = []
+    # main(1, tagsList)
+    for i in range(10):
+        p = Process(target=main, args=(i+1, tagsList[0+i*5:i*5+5], 200, 250))
+        process_list.append(p)
+        p.start()
+
+    for p in process_list:
+        p.join()
