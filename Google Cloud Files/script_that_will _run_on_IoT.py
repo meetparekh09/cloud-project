@@ -13,6 +13,37 @@ import json
 from multiprocessing import Process
 
 
+def get_link(tag):
+    initial = "https://www.pexels.com/search/"
+    middle = "?page="
+    page = 1
+    prefix = initial + tag[1:] + middle
+    page_link = prefix + str(page)
+    cnt = 0
+    link_list = set()
+    print(len(link_list))
+
+    while True:
+        page_response = requests.get(page_link)
+        page_content = BeautifulSoup(page_response.content, "html.parser")
+
+        if cnt <= 1000: #page_content.find('img', class_ = 'photo-item__img') and
+            for i in page_content.find_all('img', class_ = 'photo-item__img'):
+                print(i["src"])
+                link_list.add(i["src"])
+            cnt += 30
+
+            page += 1
+            page_link = prefix + str(page)
+            print(len(link_list))
+            print(page_link)
+            # print(page_link)
+        else:
+            break
+
+    return link_list
+
+
 def main(device_number, tagsList, numImageTag = 50, limit = 250):
     ssl_private_key_filepath = './rsa_private.pem'
     ssl_algorithm = 'RS256' # Either RS256 or ES256
@@ -72,60 +103,18 @@ def main(device_number, tagsList, numImageTag = 50, limit = 250):
     print(tagsList)
 
     for tag in tagsList:
-        page=requests.get(instagram_url + tag[1:] + '/')
-        tree=html.fromstring(page.content)
-
-
-        soup = BeautifulSoup(page.content, "lxml")
-        script_tag = soup.find('script', text=re.compile('window\._sharedData'))
-        json_data = script_tag.string.partition('=')[-1].strip(' ;')
-        try:
-            json_string = json.loads(json_data)
-        except NameError as e:
-            print('error has occured tag name:', tag)
-            print(e)
-            continue
-        except:
-            continue
-
-        nodeList = json_string["entry_data"]["TagPage"][0]["graphql"]["hashtag"]["edge_hashtag_to_media"]["edges"]
+        link_list = get_link(tag)
         count = 0
-        for index, node in enumerate(nodeList):
+        print(len(link_list))
+        for url in link_list:
+            data = {"hash-tag": tag, "url": url}
+            count += 1
+            payload = json.dumps(data)
+            client.publish(_MQTT_TOPIC, payload, qos=1)
+            if count % 10 == 0:
+                time.sleep(5)
 
-            textList = []
-            edgesList = node["node"]["edge_media_to_caption"]["edges"]
-            for edges in edgesList:
-                textList.append(edges["node"]["text"])
-
-            url = node["node"]["display_url"]
-
-            if len(textList) > 0:
-                hashtagList = [ t for t in textList[0].split() if t.startswith('#') ]
-                if len(hashtagList) > 0 :
-                    data = {"hash-tag": tag, "url": url, "hash-tag-list": hashtagList}
-                    payload = json.dumps(data)
-                    # print(payload)
-                    time.sleep(1)
-                    client.publish(_MQTT_TOPIC, payload, qos=1)
-
-                    # dataframe.append({"hash-tag": tag, "url": url, "hash-tag-list": hashtagList})
-                    count += 1
-            if count >= limit or count >= numImageTag:
-                break
-
-
-    # print(dataframe)
-
-    # send_count = 0
-    # for data in dataframe:
-    #     payload = json.dumps(data)
-    #     # print(payload)
-    #     time.sleep(2)
-    #     client.publish(_MQTT_TOPIC, payload, qos=1)
-    #     send_count += 1
-    #     if send_count >= limit:
-    #         break
-
+                
     ###################################################################################################################
 
 
@@ -140,8 +129,9 @@ tagsList = tags.split('\n')
 
 if __name__ == '__main__':
     process_list = []
-    for i in range(1):
-        p = Process(target=main, args=(i+1, tagsList[0+i*50:i*50+50], 50, 250))
+    # main(1, tagsList)
+    for i in range(10):
+        p = Process(target=main, args=(i+1, tagsList[0+i*5:i*5+5], 200, 250))
         process_list.append(p)
         p.start()
 
